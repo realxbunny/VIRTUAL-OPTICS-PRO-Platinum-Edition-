@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIRTUAL OPTICS PRO</title>
+    <style>
+        /* --- CORE THEME (iOS 27 Dark Glass) --- */
+        :root {
+            --bg-deep: #000000;
+            --glass-panel: rgba(22, 22, 24, 0.75);
+            --glass-card: rgba(30, 30, 35, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --neon-blue: #0A84FF;
+            --neon-purple: #BF5AF2;
+            --neon-green: #30D158;
+            --neon-red: #FF453A;
+            --neon-orange: #FF9F0A;
+            --text-main: #FFFFFF;
+            --text-muted: rgba(255, 255, 255, 0.55);
+            --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        body {
+            margin: 0; background: #000; color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            overflow: hidden; height: 100vh; width: 100vw;
+        }
+
+        /* --- LAYOUT SYSTEM --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            transition: all 0.6s ease-in-out; display: flex; flex-direction: column;
+        }
+        .hidden-screen { opacity: 0; pointer-events: none; transform: scale(1.1); filter: blur(20px); }
+
+        /* ================= WELCOME SCREEN ================= */
+        #welcomeScreen { z-index: 100; justify-content: center; align-items: center; background: radial-gradient(circle at center, #111 0%, #000 100%); }
+        #particleCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        
+        .hero-card {
+            z-index: 2; text-align: center; width: 90%; max-width: 500px;
+            background: rgba(255,255,255,0.05); backdrop-filter: blur(20px);
+            padding: 40px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 0 80px rgba(0,0,0,1);
+        }
+        
+        .hero-title {
+            font-size: 40px; font-weight: 900; margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .device-selector {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px;
+        }
+
+        .dev-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);
+            padding: 20px; border-radius: 20px; cursor: pointer; transition: 0.3s;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+        .dev-btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-5px); }
+        .dev-icon { font-size: 30px; }
+        .dev-label { font-size: 14px; font-weight: 700; color: white; }
+
+        /* ================= MAIN LAB INTERFACE ================= */
+        #labScreen { z-index: 10; padding: 20px; }
+
+        header {
+            width: 100%; max-width: 1200px; margin: 0 auto 15px auto;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { font-weight: 800; font-size: 20px; letter-spacing: 1px; }
+        
+        /* The Single Contribution Button */
+        .header-team-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border);
+            width: 40px; height: 40px; border-radius: 50%; display: flex; 
+            justify-content: center; align-items: center; font-size: 18px; 
+            cursor: pointer; transition: 0.3s;
+        }
+        .header-team-btn:hover { background: white; color: black; transform: scale(1.05); }
+
+        /* Dashboard Container */
+        .glass-dash {
+            width: 100%; max-width: 1200px; height: 90vh; margin: 0 auto;
+            background: var(--glass-panel);
+            backdrop-filter: saturate(180%) blur(40px);
+            border: 1px solid var(--glass-border); border-radius: 30px;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.8); transition: 0.3s;
+        }
+
+        /* Nav Tabs */
+        .nav-bar {
+            display: flex; padding: 0 20px; height: 60px; align-items: center; gap: 10px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .tab {
+            background: transparent; border: none; color: var(--text-muted);
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            padding: 8px 18px; border-radius: 12px; transition: 0.3s; white-space: nowrap;
+        }
+        .tab:hover { color: white; background: rgba(255,255,255,0.05); }
+        .tab.active { color: black; background: white; box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+
+        /* Viewport */
+        .viewport { flex: 1; position: relative; overflow: hidden; }
+        .page {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 20px; overflow-y: auto; opacity: 0; pointer-events: none;
+            transition: all 0.4s ease; transform: translateY(10px);
+        }
+        .page.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+
+        /* --- PAGE 1: SIMULATION --- */
+        .sim-grid { display: grid; grid-template-rows: 3fr 1fr; height: 100%; gap: 15px; }
+        
+        .canvas-container {
+            background: #000; border-radius: 20px; position: relative;
+            border: 1px solid var(--glass-border); overflow: hidden;
+            box-shadow: inset 0 0 80px rgba(0,0,0,1);
+        }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .readout {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(20,20,20,0.8); backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); padding: 10px 20px; border-radius: 12px;
+            font-family: monospace; color: var(--neon-green); font-size: 14px;
+        }
+
+        .controls {
+            background: rgba(255,255,255,0.03); border-radius: 20px; padding: 20px;
+            border: 1px solid var(--glass-border);
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: center;
+        }
+
+        .ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+        .label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+
+        /* Controls */
+        button.pwr-btn {
+            background: #222; color: #888; border: 1px solid #444; padding: 12px;
+            border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        }
+        button.pwr-btn.on { background: var(--neon-red); color: white; border-color: var(--neon-red); box-shadow: 0 0 20px rgba(255,69,58,0.4); }
+
+        input[type=range] { width: 100%; -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 10px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: white; margin-top: -9px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+
+        .mode-toggle { display: flex; background: rgba(0,0,0,0.5); padding: 4px; border-radius: 10px; }
+        .mt-btn { flex: 1; background: none; border: none; color: #888; padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 8px; transition: 0.3s; }
+        .mt-btn.active { background: #333; color: white; }
+
+        /* --- PAGE 2: THEORY --- */
+        .theory-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding-bottom: 80px; }
+        .theory-card { background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: 24px; overflow: hidden; display: flex; flex-direction: column; }
+        .theory-vis { height: 150px; background: rgba(0,0,0,0.3); position: relative; border-bottom: 1px solid var(--glass-border); }
+        .theory-content { padding: 25px; }
+        .tc-h3 { margin: 0 0 10px 0; font-size: 20px; color: white; }
+        .tc-p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+        .tag { font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); color: white; margin-right: 5px; }
+
+        /* --- PAGE 3: OBSERVATION --- */
+        .obs-grid { display: grid; grid-template-rows: auto 1fr; height: 100%; gap: 20px; }
+        .obs-bar { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; border: 1px solid var(--glass-border); flex-wrap: wrap; gap: 10px; }
+        .log-btn { background: var(--neon-blue); color: white; border: none; padding: 12px 25px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s; opacity: 0.5; pointer-events: none; width: 100%; }
+        @media(min-width: 600px) { .log-btn { width: auto; } }
+        .log-btn.ready { opacity: 1; pointer-events: all; }
+
+        .table-wrap { overflow-y: auto; overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 20px; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; /* Force scroll on mobile */ }
+        th { background: rgba(0,0,0,0.5); padding: 15px; text-align: left; color: #888; font-size: 12px; position: sticky; top: 0; }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-family: monospace; }
+        .loss-cell { color: var(--neon-red); font-weight: bold; }
+
+        /* --- PAGE 4: CALCULATOR --- */
+        .calc-box { max-width: 450px; margin: 20px auto; text-align: center; }
+        .inp-box { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 15px; border-radius: 10px; color: white; font-size: 16px; margin-bottom: 15px; margin-top: 5px; }
+        .calc-btn { width: 100%; background: var(--neon-purple); color: white; padding: 15px; border: none; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer; }
+        .res-box { margin-top: 20px; padding: 20px; background: rgba(48, 209, 88, 0.15); border: 1px solid var(--neon-green); border-radius: 15px; display: none; }
+
+        /* --- MODAL (CONTRIBUTORS) --- */
+        .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 200; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.4s; }
+        .modal-bg.open { opacity: 1; pointer-events: all; }
+        .team-card { width: 90%; max-width: 450px; background: #1c1c1e; border: 1px solid var(--glass-border); border-radius: 30px; padding: 30px; transform: scale(0.9); transition: 0.4s; }
+        .modal-bg.open .team-card { transform: scale(1); }
+
+        /* Member List Styling */
+        .member-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        
+        .dev-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: rgba(255,255,255,0.05);
+            border-radius: 16px; border: 1px solid transparent;
+            transition: all 0.3s;
+        }
+
+        /* Standard Member Hover */
+        .dev-row:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.1); }
+
+        /* Highlighting Raj's Row */
+        .dev-row.highlight {
+            background: rgba(10, 132, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(10, 132, 255, 0.15);
+            cursor: pointer;
+        }
+        .dev-row.highlight:hover {
+            background: rgba(10, 132, 255, 0.2);
+            transform: scale(1.02);
+        }
+
+        .d-name { font-weight: 700; font-size: 16px; color: white; }
+        .d-roll { font-size: 12px; color: #888; margin-top: 2px; }
+        .d-role { font-size: 10px; font-weight: 800; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px; color: #ccc; text-transform: uppercase; }
+        
+        /* Specific label for highlight row */
+        .highlight .d-role { background: var(--neon-blue); color: white; }
+        .highlight .d-roll { color: rgba(10, 132, 255, 0.8); }
+
+        /* ================== MOBILE MODE OVERRIDES ================== */
+        body.mobile-mode #labScreen { padding: 0; }
+        body.mobile-mode .glass-dash { width: 100%; height: 100%; border-radius: 0; border: none; }
+        body.mobile-mode header { padding: 15px 20px; margin-bottom: 0; }
+
+        /* Move Nav to Bottom */
+        body.mobile-mode .nav-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 85px;
+            background: rgba(20,20,20,0.95); backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border); border-bottom: none;
+            z-index: 50; padding-bottom: 20px; justify-content: space-around;
+        }
+        
+        body.mobile-mode .tab { font-size: 10px; display: flex; flex-direction: column; align-items: center; padding: 5px; gap: 5px; }
+        /* Mobile Icons for tabs */
+        body.mobile-mode .tab::before { content: ''; display: block; width: 20px; height: 20px; background: currentColor; mask-size: contain; -webkit-mask-size: contain; mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat; }
+        body.mobile-mode .tab:nth-child(1)::before { mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v16H4z"/></svg>'); -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v16H4z"/></svg>'); }
+        body.mobile-mode .tab:nth-child(2)::before { mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 22h20L12 2z"/></svg>'); -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 22h20L12 2z"/></svg>'); }
+        body.mobile-mode .tab:nth-child(3)::before { mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v2H4zM4 10h16v2H4zM4 16h16v2H4z"/></svg>'); -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h16v2H4zM4 10h16v2H4zM4 16h16v2H4z"/></svg>'); }
+        body.mobile-mode .tab:nth-child(4)::before { mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M7 2h10v20H7z"/></svg>'); -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg"><path d="M7 2h10v20H7z"/></svg>'); }
+        
+        body.mobile-mode .tab.active { background: transparent; color: var(--neon-blue); box-shadow: none; }
+        body.mobile-mode .viewport { padding-bottom: 100px; }
+        body.mobile-mode .sim-grid { display: flex; flex-direction: column; height: auto; }
+        body.mobile-mode .canvas-container { height: 300px; flex-shrink: 0; }
+        body.mobile-mode .controls { grid-template-columns: 1fr; }
+
+    </style>
+</head>
+<body>
+
+    <div class="screen" id="welcomeScreen">
+        <canvas id="particleCanvas"></canvas>
+        <div class="hero-card">
+            <h1 class="hero-title">VIRTUAL<br>OPTICS PRO</h1>
+            <div style="color: var(--neon-blue); letter-spacing: 2px; font-weight: 700; margin-top: 10px; font-size: 12px;">UNIVERSAL EDITION</div>
+            
+            <div class="device-selector">
+                <div class="dev-btn" onclick="initApp('desktop')">
+                    <div class="dev-icon">🖥️</div>
+                    <div class="dev-label">DESKTOP</div>
+                </div>
+                <div class="dev-btn" onclick="initApp('mobile')">
+                    <div class="dev-icon">📱</div>
+                    <div class="dev-label">MOBILE</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen hidden-screen" id="labScreen">
+        <header>
+            <div class="logo">VIRTUAL OPTICS PRO</div>
+            <div class="header-team-btn" onclick="toggleModal(true)">👥</div>
+        </header>
+
+        <div class="glass-dash">
+            <div class="nav-bar">
+                <button class="tab active" onclick="setPage('sim')">Simulation</button>
+                <button class="tab" onclick="setPage('theory')">Theory</button>
+                <button class="tab" onclick="setPage('obs')">Observations</button>
+                <button class="tab" onclick="setPage('calc')">Calculator</button>
+            </div>
+
+            <div class="viewport">
+                
+                <div id="page-sim" class="page active">
+                    <div class="sim-grid">
+                        <div class="canvas-container">
+                            <canvas id="simCanvas"></canvas>
+                            <div class="readout">
+                                <div>IN: <span id="valIn">-</span> dBm</div>
+                                <div>OUT: <span id="valOut" style="color: var(--neon-green)">-</span> dBm</div>
+                            </div>
+                        </div>
+                        <div class="controls">
+                            <div class="ctrl-group">
+                                <span class="label">Laser Source</span>
+                                <button id="laserBtn" class="pwr-btn" onclick="toggleLaser()">LASER OFF</button>
+                            </div>
+                            <div class="ctrl-group">
+                                <span class="label">Input Power (dBm)</span>
+                                <input type="range" id="pwrSlider" min="-30" max="0" value="-10" oninput="updatePhysics()">
+                                <div style="font-size: 10px; text-align: right; color: #aaa;" id="sliderDisplay">-10 dBm</div>
+                            </div>
+                            <div class="ctrl-group">
+                                <span class="label">Fiber Type</span>
+                                <div class="mode-toggle">
+                                    <button class="mt-btn active" onclick="setMode(0, this)">Single</button>
+                                    <button class="mt-btn" onclick="setMode(1, this)">Step</button>
+                                    <button class="mt-btn" onclick="setMode(2, this)">Graded</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-theory" class="page">
+                    <h2 style="margin-top:0;">Concepts</h2>
+                    <div class="theory-layout">
+                        <div class="theory-card">
+                            <div class="theory-vis"><canvas id="theoryCanvas1"></canvas></div>
+                            <div class="theory-content">
+                                <div class="tc-h3" style="color: var(--neon-orange)">Single Mode</div>
+                                <div style="margin-bottom: 10px;"><span class="tag">Core: 9µm</span><span class="tag">Loss: Low</span></div>
+                                <p class="tc-p">Small core allows only one mode. Eliminates intermodal dispersion. Ideal for long-haul.</p>
+                            </div>
+                        </div>
+                        <div class="theory-card">
+                            <div class="theory-vis"><canvas id="theoryCanvas2"></canvas></div>
+                            <div class="theory-content">
+                                <div class="tc-h3" style="color: var(--neon-blue)">Step Index</div>
+                                <div style="margin-bottom: 10px;"><span class="tag">Core: 50µm</span><span class="tag">Loss: High</span></div>
+                                <p class="tc-p">Large core with uniform index. Light reflects via TIR in sharp angles. High dispersion.</p>
+                            </div>
+                        </div>
+                        <div class="theory-card">
+                            <div class="theory-vis"><canvas id="theoryCanvas3"></canvas></div>
+                            <div class="theory-content">
+                                <div class="tc-h3" style="color: var(--neon-green)">Graded Index</div>
+                                <div style="margin-bottom: 10px;"><span class="tag">Core: 62µm</span><span class="tag">Loss: Mid</span></div>
+                                <p class="tc-p">Index decreases gradually from center. Light travels in sine waves, reducing dispersion.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-obs" class="page">
+                    <div class="obs-grid">
+                        <div class="obs-bar">
+                            <div>
+                                <h2 style="margin:0">Logbook</h2>
+                                <p style="margin:0; font-size:12px; color:#888;">Record simulation data.</p>
+                            </div>
+                            <button id="recordBtn" class="log-btn" onclick="addRecord()">LOG READING +</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table id="obsTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Mode</th>
+                                        <th>Input</th>
+                                        <th>Output</th>
+                                        <th>Loss</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-calc" class="page">
+                    <div class="calc-box">
+                        <h2>NA Calculator</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 20px;">Numerical Aperture Calculation</p>
+                        <div style="text-align: left;">
+                            <span class="label">Core Index (n1)</span>
+                            <input type="number" id="n1" class="inp-box" placeholder="e.g. 1.48" step="0.01">
+                            <span class="label">Cladding Index (n2)</span>
+                            <input type="number" id="n2" class="inp-box" placeholder="e.g. 1.46" step="0.01">
+                        </div>
+                        <button class="calc-btn" onclick="calculateNA()">Calculate</button>
+                        <div id="calcRes" class="res-box">
+                            <div style="font-size:12px; font-weight:bold; color:var(--neon-green)">RESULT</div>
+                            <div id="naDisplay" style="font-size: 32px; font-weight:800; color:white;">0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-bg" id="contribModal" onclick="if(event.target===this) toggleModal(false)">
+        <div class="team-card">
+            <h2 style="margin-top:0; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:15px;">Contributors</h2>
+            
+            <div class="member-list">
+                <div class="dev-row highlight" onclick="window.open('https://www.instagram.com/urtype.raj?igsh=MTR6N2RibDJ6ank0cA==', '_blank')">
+                    <div>
+                        <div class="d-name">Raj Dalvi</div>
+                        <div class="d-roll">12514</div>
+                    </div>
+                    <div class="d-role">Developer</div>
+                </div>
+
+                <div class="dev-row">
+                    <div>
+                        <div class="d-name">Mahaveer Vishnoi</div>
+                        <div class="d-roll">12501</div>
+                    </div>
+                    <div class="d-role">Developer</div>
+                </div>
+                
+                <div class="dev-row">
+                    <div>
+                        <div class="d-name">Vihit Borse</div>
+                        <div class="d-roll">12511</div>
+                    </div>
+                    <div class="d-role">Developer</div>
+                </div>
+                
+                <div class="dev-row">
+                    <div>
+                        <div class="d-name">Soham Deshpande</div>
+                        <div class="d-roll">12517</div>
+                    </div>
+                    <div class="d-role">Developer</div>
+                </div>
+
+                <div class="dev-row">
+                    <div>
+                        <div class="d-name">Aryan Chavhan</div>
+                        <div class="d-roll">12512</div>
+                    </div>
+                    <div class="d-role">Developer</div>
+                </div>
+            </div>
+            
+            <button onclick="toggleModal(false)" style="width:100%; margin-top: 25px; padding: 12px; background: rgba(255,255,255,0.1); color: white; border:none; border-radius: 12px; cursor: pointer;">Close</button>
+        </div>
+    </div>
+
+<script>
+    // --- APP STATE ---
+    const state = { laserOn: false, mode: 0, inputPower: -10, outputPower: 0, loss: 0, simTime: 0 };
+
+    // --- INIT ---
+    function initApp(mode) {
+        const body = document.body;
+        if(mode === 'mobile') {
+            body.classList.add('mobile-mode');
+        } else {
+            body.classList.remove('mobile-mode');
+        }
+        
+        document.getElementById('welcomeScreen').classList.add('hidden-screen');
+        setTimeout(() => {
+            document.getElementById('labScreen').classList.remove('hidden-screen');
+            resizeSim();
+            startTheoryAnimations();
+        }, 500);
+    }
+
+    // --- PARTICLES ---
+    const pCanvas = document.getElementById('particleCanvas');
+    const pCtx = pCanvas.getContext('2d');
+    let particles = [];
+    function initParticles() {
+        pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight;
+        particles = Array.from({length: 50}, () => ({
+            x: Math.random()*pCanvas.width, y: Math.random()*pCanvas.height,
+            vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5
+        }));
+    }
+    function drawParticles() {
+        pCtx.fillStyle = '#000'; pCtx.fillRect(0,0,pCanvas.width,pCanvas.height);
+        pCtx.fillStyle = '#0A84FF';
+        particles.forEach(p => {
+            p.x+=p.vx; p.y+=p.vy;
+            if(p.x<0||p.x>pCanvas.width) p.vx*=-1; if(p.y<0||p.y>pCanvas.height) p.vy*=-1;
+            pCtx.beginPath(); pCtx.arc(p.x,p.y,1.5,0,Math.PI*2); pCtx.fill();
+        });
+        requestAnimationFrame(drawParticles);
+    }
+    window.addEventListener('resize', initParticles);
+    initParticles(); drawParticles();
+
+    // --- NAV ---
+    function setPage(pid) {
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-'+pid).classList.add('active');
+    }
+    function toggleModal(show) {
+        const m = document.getElementById('contribModal');
+        show ? m.classList.add('open') : m.classList.remove('open');
+    }
+
+    // --- SIMULATION ---
+    const simCanvas = document.getElementById('simCanvas');
+    const ctx = simCanvas.getContext('2d');
+
+    function resizeSim() {
+        simCanvas.width = simCanvas.parentElement.offsetWidth;
+        simCanvas.height = simCanvas.parentElement.offsetHeight;
+        drawSimFrame();
+    }
+    window.addEventListener('resize', resizeSim);
+
+    function toggleLaser() {
+        state.laserOn = !state.laserOn;
+        const btn = document.getElementById('laserBtn');
+        const recBtn = document.getElementById('recordBtn');
+        if(state.laserOn) {
+            btn.innerText = "LASER ON"; btn.classList.add('on');
+            recBtn.classList.add('ready');
+            animateSim();
+        } else {
+            btn.innerText = "LASER OFF"; btn.classList.remove('on');
+            recBtn.classList.remove('ready');
+            state.simTime = 0; drawSimFrame();
+        }
+        updatePhysics();
+    }
+
+    function setMode(idx, btn) {
+        state.mode = idx;
+        document.querySelectorAll('.mt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updatePhysics();
+        if(!state.laserOn) drawSimFrame();
+    }
+
+    function updatePhysics() {
+        state.inputPower = parseInt(document.getElementById('pwrSlider').value);
+        document.getElementById('sliderDisplay').innerText = state.inputPower + " dBm";
+        const lossFactors = [0.2, 3.0, 1.1]; 
+        state.loss = (lossFactors[state.mode] + Math.random()*0.1).toFixed(2);
+        state.outputPower = (state.inputPower - state.loss).toFixed(2);
+        if(state.laserOn) {
+            document.getElementById('valIn').innerText = state.inputPower;
+            document.getElementById('valOut').innerText = state.outputPower;
+        } else {
+            document.getElementById('valIn').innerText = "-"; document.getElementById('valOut').innerText = "-";
+        }
+    }
+
+    function animateSim() {
+        if(!state.laserOn) return;
+        state.simTime += 0.015; if(state.simTime > 1) state.simTime = 1;
+        drawSimFrame();
+        if(state.laserOn) requestAnimationFrame(animateSim);
+    }
+
+    function drawSimFrame() {
+        ctx.clearRect(0,0,simCanvas.width, simCanvas.height);
+        const w = simCanvas.width; const h = simCanvas.height; const cy = h/2;
+        
+        // Fiber
+        const thick = document.body.classList.contains('mobile-mode') ? 60 : 100;
+        let grad = ctx.createLinearGradient(0, cy-thick/2, 0, cy+thick/2);
+        if(state.mode===2) { 
+            grad.addColorStop(0,"rgba(255,255,255,0.05)"); grad.addColorStop(0.5,"rgba(255,255,255,0.2)"); grad.addColorStop(1,"rgba(255,255,255,0.05)");
+        } else {
+            grad.addColorStop(0,"rgba(255,255,255,0.1)"); grad.addColorStop(0.5,"rgba(255,255,255,0.02)"); grad.addColorStop(1,"rgba(255,255,255,0.1)");
+        }
+        ctx.fillStyle = grad; ctx.fillRect(50, cy-thick/2, w-100, thick);
+        ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.beginPath(); ctx.moveTo(50, cy-thick/2); ctx.lineTo(w-50, cy-thick/2); ctx.moveTo(50, cy+thick/2); ctx.lineTo(w-50, cy+thick/2); ctx.stroke();
+
+        // Hardware
+        ctx.fillStyle = "#222"; ctx.fillRect(10, cy-30, 40, 60); ctx.fillRect(w-50, cy-30, 40, 60);
+
+        if(state.laserOn) {
+            ctx.shadowColor = "#FF453A"; ctx.shadowBlur = 20; ctx.fillStyle = "#FF453A"; ctx.fillRect(48, cy-5, 5, 10); ctx.shadowBlur = 0;
+            ctx.shadowColor = "#30D158"; ctx.shadowBlur = 20; ctx.fillStyle = "#30D158"; ctx.beginPath(); ctx.arc(w-30, cy, 10, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+
+            const len = (w-100) * state.simTime;
+            ctx.strokeStyle = "#FF453A"; ctx.lineWidth = 3; ctx.shadowColor = "#FF453A"; ctx.shadowBlur = 15; ctx.lineJoin = "round"; ctx.lineCap = "round";
+            ctx.beginPath(); ctx.moveTo(50, cy);
+            
+            for(let x=0; x<=len; x+=4) {
+                let y = cy;
+                const amp = document.body.classList.contains('mobile-mode') ? 20 : 35;
+                if(state.mode === 1) { 
+                    const cycle = (x/150)%1;
+                    y = (cycle < 0.5) ? cy + (cycle * (amp*4)) - amp : cy + ((1-cycle)*(amp*4)) - amp;
+                } else if(state.mode === 2) { 
+                    y = cy + Math.sin(x*0.04) * amp;
+                }
+                ctx.lineTo(50+x, y);
+            }
+            ctx.stroke(); ctx.shadowBlur = 0;
+        }
+    }
+
+    // --- THEORY ANIMATIONS ---
+    function startTheoryAnimations() {
+        ['theoryCanvas1', 'theoryCanvas2', 'theoryCanvas3'].forEach((id, idx) => {
+            const c = document.getElementById(id); const ct = c.getContext('2d');
+            const rect = c.parentElement.getBoundingClientRect(); c.width = rect.width; c.height = rect.height;
+            let t = 0;
+            function loop() {
+                t += 2; ct.clearRect(0,0,c.width,c.height);
+                const w = c.width; const h = c.height; const cy = h/2;
+                ct.strokeStyle = "rgba(255,255,255,0.05)"; ct.beginPath(); for(let i=0; i<w; i+=20) { ct.moveTo(i,0); ct.lineTo(i,h); } ct.stroke();
+                const coreH = (idx===0) ? 10 : 60;
+                ct.fillStyle = "rgba(255,255,255,0.08)"; ct.fillRect(0, cy-coreH/2, w, coreH);
+                let px = t % w; let py = cy;
+                if(idx === 1) { const cycle = (px/80)%1; const amp = coreH/2 - 2; py = (cycle<0.5) ? cy + (cycle*4*amp)-amp : cy + ((1-cycle)*4*amp)-amp; } 
+                else if(idx === 2) { py = cy + Math.sin(px*0.06) * (coreH/2 - 5); }
+                ct.fillStyle = "#FFF"; ct.shadowColor = "#FFF"; ct.shadowBlur = 10; ct.beginPath(); ct.arc(px, py, 3, 0, Math.PI*2); ct.fill(); ct.shadowBlur = 0;
+                requestAnimationFrame(loop);
+            }
+            loop();
+        });
+    }
+
+    // --- TABLE & CALC ---
+    let recCount = 0;
+    function addRecord() {
+        if(!state.laserOn) { alert("Laser OFF"); return; }
+        recCount++;
+        const tbody = document.querySelector('#obsTable tbody');
+        const modes = ["SMF", "Step", "GRIN"];
+        tbody.innerHTML = `<tr><td>${recCount}</td><td>${modes[state.mode]}</td><td>${state.inputPower}</td><td>${state.outputPower}</td><td class="loss-cell">${state.loss}</td></tr>` + tbody.innerHTML;
+        const btn = document.getElementById('recordBtn'); btn.innerText = "✓"; setTimeout(() => btn.innerText = "LOG READING +", 1000);
+    }
+
+    function calculateNA() {
+        const n1 = parseFloat(document.getElementById('n1').value);
+        const n2 = parseFloat(document.getElementById('n2').value);
+        if(!n1 || !n2 || n2 >= n1) { alert("Invalid n1/n2"); return; }
+        document.getElementById('calcRes').style.display = "block";
+        document.getElementById('naDisplay').innerText = Math.sqrt(n1*n1 - n2*n2).toFixed(3);
+    }
+</script>
+</body>
+</html>
